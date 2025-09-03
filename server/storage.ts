@@ -111,7 +111,17 @@ export class MemStorage implements IStorage {
     ];
 
     defaultModules.forEach(module => {
-      this.modules.set(module.id, module);
+      this.modules.set(module.id, {
+        id: module.id,
+        name: module.name,
+        status: module.status,
+        integrationLevel: module.integrationLevel,
+        load: module.load,
+        metrics: Object.fromEntries(
+          Object.entries(module.metrics).filter(([key, value]) => value !== undefined)
+        ),
+        lastUpdated: module.lastUpdated,
+      });
     });
 
     // Initialize system metrics
@@ -321,5 +331,30 @@ export class MemStorage implements IStorage {
 
   async getEmergencyHistory(): Promise<EmergencyAction[]> {
     return this.emergencyActions.slice(-50); // Last 50 actions
+  }
+
+  // Cost Tracking Methods
+  async addCostEntry(cost: { service: string; endpoint?: string; model?: string; tokens?: number; cost: number; requestType: string; details?: Record<string, string | number>; }): Promise<void> {
+    const entry = {
+      id: Date.now().toString(),
+      timestamp: new Date().toISOString(),
+      ...cost,
+    };
+    this.costEntries.push(entry);
+    
+    // Keep only last 10000 entries
+    if (this.costEntries.length > 10000) {
+      this.costEntries = this.costEntries.slice(-10000);
+    }
+  }
+
+  async getCostHistory(hours: number): Promise<any[]> {
+    const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000);
+    return this.costEntries.filter(entry => new Date(entry.timestamp) > cutoff);
+  }
+
+  async getTotalCost(hours: number): Promise<number> {
+    const history = await this.getCostHistory(hours);
+    return history.reduce((total, entry) => total + entry.cost, 0);
   }
 }

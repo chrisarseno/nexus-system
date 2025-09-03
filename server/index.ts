@@ -2,10 +2,11 @@ import express from "express";
 import { createServer } from "http";
 import { Server as SocketIOServer } from "socket.io";
 import cors from "cors";
-import { MemStorage } from "./storage";
+import { DatabaseStorage } from "./database-storage";
 import { createRoutes } from "./routes";
 import { setupVite } from "./vite";
 import { LocalNEXUSSystem } from "./sage/local-sage-system";
+import { ConsciousnessBridge } from "./consciousness-bridge";
 
 const app = express();
 const server = createServer(app);
@@ -16,8 +17,9 @@ const io = new SocketIOServer(server, {
   },
 });
 
-const storage = new MemStorage();
+const storage = new DatabaseStorage();
 const localNexusSystem = new LocalNEXUSSystem(storage);
+const consciousnessBridge = new ConsciousnessBridge(storage);
 
 app.use(cors());
 app.use(express.json());
@@ -101,10 +103,13 @@ if (process.env.NODE_ENV !== "production") {
   setupVite(app, server);
 }
 
+// Initialize consciousness bridge
+consciousnessBridge.initialize();
+
 // Start autonomous NEXUS learning with local models
 console.log("🤖 Local NEXUS System initialized");
 
-const PORT = process.env.PORT || 5000;
+const PORT = parseInt(process.env.PORT || "5000", 10);
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 NEXUS (NEXUS Unified System) running on http://0.0.0.0:${PORT}`);
   console.log(`💰 Local compute cost tracking enabled`);
