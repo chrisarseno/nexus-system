@@ -62,7 +62,7 @@ export default function Dashboard() {
               <i className="fas fa-brain text-primary-foreground text-sm"></i>
             </div>
             <div>
-              <h1 className="text-lg font-semibold">AGI Consciousness</h1>
+              <h1 className="text-lg font-semibold">SAGE System</h1>
               <p className="text-xs text-muted-foreground">v2.1.0</p>
             </div>
           </div>
@@ -85,9 +85,9 @@ export default function Dashboard() {
               </span>
             </div>
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Consciousness Level</span>
+              <span className="text-muted-foreground">Learning Efficiency</span>
               <span className="text-accent font-medium">
-                {currentMetrics?.consciousnessCoherence?.toFixed(1) || 0}%
+                {currentMetrics?.learningEfficiency?.toFixed(1) || 0}%
               </span>
             </div>
           </div>
@@ -100,9 +100,9 @@ export default function Dashboard() {
               <i className="fas fa-tachometer-alt w-4"></i>
               Dashboard
             </a>
-            <a href="#" className="flex items-center gap-3 px-3 py-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted text-sm" data-testid="nav-consciousness">
+            <a href="#" className="flex items-center gap-3 px-3 py-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted text-sm" data-testid="nav-sage-core">
               <i className="fas fa-brain w-4"></i>
-              Consciousness Core
+              SAGE Core
             </a>
             <a href="#" className="flex items-center gap-3 px-3 py-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted text-sm" data-testid="nav-knowledge">
               <i className="fas fa-project-diagram w-4"></i>
@@ -133,9 +133,9 @@ export default function Dashboard() {
           <div className="mt-8">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Quick Actions</h3>
             <div className="space-y-1">
-              <button className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted text-sm" data-testid="button-start-learning">
+              <button className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted text-sm" data-testid="button-sage-execute">
                 <i className="fas fa-play w-4"></i>
-                Start Learning Session
+                Execute SAGE Goal
               </button>
               <button className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted text-sm" data-testid="button-emergency-pause">
                 <i className="fas fa-pause w-4"></i>
@@ -166,7 +166,7 @@ export default function Dashboard() {
         {/* Top Bar */}
         <header className="h-16 bg-card border-b border-border flex items-center justify-between px-6">
           <div className="flex items-center gap-4">
-            <h2 className="text-xl font-semibold">Consciousness Dashboard</h2>
+            <h2 className="text-xl font-semibold">SAGE Dashboard</h2>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <i className={`fas fa-circle ${connectionStatus === 'connected' ? 'text-accent' : 'text-destructive'}`}></i>
               <span>Real-time monitoring {connectionStatus === 'connected' ? 'active' : 'disconnected'}</span>

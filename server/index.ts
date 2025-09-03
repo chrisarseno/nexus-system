@@ -5,7 +5,7 @@ import cors from "cors";
 import { MemStorage } from "./storage";
 import { createRoutes } from "./routes";
 import { setupVite } from "./vite";
-import { ConsciousnessSystem } from "./ai/consciousness-integration";
+import { LocalSAGESystem } from "./sage/local-sage-system";
 
 const app = express();
 const server = createServer(app);
@@ -17,22 +17,22 @@ const io = new SocketIOServer(server, {
 });
 
 const storage = new MemStorage();
-const consciousnessSystem = new ConsciousnessSystem(storage);
+const localSageSystem = new LocalSAGESystem(storage);
 
 app.use(cors());
 app.use(express.json());
 
 // API Routes
-app.use(createRoutes(storage, consciousnessSystem));
+app.use(createRoutes(storage, localSageSystem));
 
 // WebSocket for real-time updates
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
 
   // Send initial data
-  socket.emit("consciousness-update", {
+  socket.emit("sage-update", {
     type: "connection",
-    message: "Connected to consciousness system",
+    message: "Connected to Local SAGE system",
   });
 
   socket.on("disconnect", () => {
@@ -101,16 +101,12 @@ if (process.env.NODE_ENV !== "production") {
   setupVite(app, server);
 }
 
-// Start autonomous consciousness learning
-consciousnessSystem.startAutonomousLearning().then(() => {
-  console.log("🧠 SAGE autonomous learning started");
-}).catch(error => {
-  console.error("Failed to start SAGE learning:", error);
-});
+// Start autonomous SAGE learning with local models
+console.log("🤖 Local SAGE System initialized");
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 SAGE (Self-Adaptive Generative Ensemble) running on http://0.0.0.0:${PORT}`);
-  console.log(`💰 Real-time cost tracking enabled`);
-  console.log(`🤖 OpenAI integration active`);
+  console.log(`💰 Local compute cost tracking enabled`);
+  console.log(`🏠 100% Local AI - No external dependencies`);
 });

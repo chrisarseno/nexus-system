@@ -3,7 +3,7 @@ import { IStorage } from "./storage";
 import { insertActivityEventSchema, insertCollaborationMessageSchema, emergencyActionSchema } from "../shared/schema";
 import { z } from "zod";
 
-export function createRoutes(storage: IStorage, consciousnessSystem?: any) {
+export function createRoutes(storage: IStorage, localSageSystem?: any) {
   const router = express.Router();
 
   // Consciousness Modules
@@ -150,24 +150,49 @@ export function createRoutes(storage: IStorage, consciousnessSystem?: any) {
   });
 
 
-  // AI Consciousness Endpoints
-  if (consciousnessSystem) {
-    router.post("/api/ai/analyze", async (req: Request, res: Response) => {
+  // Local SAGE Endpoints
+  if (localSageSystem) {
+    router.post("/api/sage/execute", async (req: Request, res: Response) => {
       try {
-        const analysis = await consciousnessSystem.analyzeSystemState();
-        res.json(analysis);
+        const { goal, context, computeBudget } = req.body;
+        const result = await localSageSystem.executeGoal(
+          goal || "Analyze current system state",
+          context || {},
+          computeBudget || 60000
+        );
+        res.json(result);
       } catch (error) {
-        res.status(500).json({ error: "AI analysis failed", details: error instanceof Error ? error.message : "Unknown error" });
+        res.status(500).json({ error: "Local SAGE execution failed", details: error instanceof Error ? error.message : "Unknown error" });
       }
     });
 
-    router.get("/api/ai/costs", async (req: Request, res: Response) => {
+    router.get("/api/sage/costs", async (req: Request, res: Response) => {
       try {
-        const totalCost = consciousnessSystem.getTotalCost();
-        const hourlyCost = consciousnessSystem.getHourlyCostRate();
+        const totalCost = localSageSystem.getTotalCost();
+        const hourlyCost = localSageSystem.getHourlyCostRate();
         res.json({ totalCost, hourlyCost });
       } catch (error) {
-        res.status(500).json({ error: "Failed to get cost data" });
+        res.status(500).json({ error: "Failed to get local cost data" });
+      }
+    });
+
+    router.get("/api/sage/metrics", async (req: Request, res: Response) => {
+      try {
+        const metrics = await localSageSystem.getLocalMetrics();
+        res.json(metrics);
+      } catch (error) {
+        res.status(500).json({ error: "Failed to get SAGE metrics" });
+      }
+    });
+
+    router.get("/api/sage/knowledge", async (req: Request, res: Response) => {
+      try {
+        const knowledgeBase = await localSageSystem.getKnowledgeBase();
+        const query = req.query.query as string;
+        const facts = await knowledgeBase.getFacts(query);
+        res.json(facts);
+      } catch (error) {
+        res.status(500).json({ error: "Failed to get knowledge base" });
       }
     });
   }
