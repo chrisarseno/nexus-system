@@ -1,4 +1,5 @@
-import { pgTable, varchar, text, timestamp, real, integer, boolean, json } from "drizzle-orm/pg-core";
+import { pgTable, varchar, text, timestamp, real, integer, boolean, json, index } from "drizzle-orm/pg-core";
+import { sql } from 'drizzle-orm';
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -111,6 +112,30 @@ export const knowledgeNodes = pgTable("knowledge_nodes", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Session storage table for authentication
+export const sessions = pgTable(
+  "sessions",
+  {
+    sid: varchar("sid").primaryKey(),
+    sess: json("sess").notNull(),
+    expire: timestamp("expire").notNull(),
+  },
+  (table) => [index("IDX_session_expire").on(table.expire)],
+);
+
+// User storage table for single-user authentication
+export const users = pgTable("users", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  googleId: varchar("google_id").unique(),
+  email: varchar("email").unique(),
+  name: varchar("name"),
+  picture: varchar("picture"),
+  username: varchar("username").unique(),
+  role: varchar("role", { length: 50 }).default("admin"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Schemas for inserts
 export const insertConsciousnessModuleSchema = createInsertSchema(consciousnessModules).omit({
   lastUpdated: true
@@ -162,6 +187,12 @@ export const insertKnowledgeNodeSchema = createInsertSchema(knowledgeNodes).omit
   updatedAt: true
 });
 
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
 // Export types
 export type ConsciousnessModule = typeof consciousnessModules.$inferSelect;
 export type SystemMetrics = typeof systemMetrics.$inferSelect;
@@ -173,6 +204,7 @@ export type CostTracking = typeof costTracking.$inferSelect;
 export type ConversationMemory = typeof conversationMemory.$inferSelect;
 export type TemporalEvent = typeof temporalEvents.$inferSelect;
 export type KnowledgeNode = typeof knowledgeNodes.$inferSelect;
+export type User = typeof users.$inferSelect;
 
 export type InsertConsciousnessModule = z.infer<typeof insertConsciousnessModuleSchema>;
 export type InsertSystemMetrics = z.infer<typeof insertSystemMetricsSchema>;
@@ -184,3 +216,4 @@ export type InsertCostTracking = z.infer<typeof insertCostTrackingSchema>;
 export type InsertConversationMemory = z.infer<typeof insertConversationMemorySchema>;
 export type InsertTemporalEvent = z.infer<typeof insertTemporalEventSchema>;
 export type InsertKnowledgeNode = z.infer<typeof insertKnowledgeNodeSchema>;
+export type InsertUser = z.infer<typeof insertUserSchema>;
