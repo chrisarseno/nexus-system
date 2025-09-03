@@ -103,14 +103,14 @@ if (process.env.NODE_ENV !== "production") {
 
 // Start autonomous consciousness learning
 consciousnessSystem.startAutonomousLearning().then(() => {
-  console.log("🧠 Autonomous consciousness learning started");
+  console.log("🧠 SAGE autonomous learning started");
 }).catch(error => {
-  console.error("Failed to start consciousness learning:", error);
+  console.error("Failed to start SAGE learning:", error);
 });
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 Consciousness System running on http://0.0.0.0:${PORT}`);
+  console.log(`🚀 SAGE (Self-Adaptive Generative Ensemble) running on http://0.0.0.0:${PORT}`);
   console.log(`💰 Real-time cost tracking enabled`);
   console.log(`🤖 OpenAI integration active`);
 });
