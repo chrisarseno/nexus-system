@@ -4,6 +4,8 @@
  */
 
 import { LocalAIService } from './local-ai-service';
+import { KnowledgeGraphEngine } from './knowledge-graph';
+import { SourceReputationEngine } from './source-reputation';
 import { IStorage } from '../storage';
 
 export interface LocalTask {
@@ -588,6 +590,8 @@ export class LocalNEXUSSystem {
   private executor: LocalTaskExecutor;
   private verifier: LocalTaskVerifier;
   private knowledgeBase: LocalKnowledgeBase;
+  private knowledgeGraph: KnowledgeGraphEngine;
+  private sourceReputation: SourceReputationEngine;
   private storage: IStorage;
 
   constructor(storage: IStorage) {
@@ -598,6 +602,8 @@ export class LocalNEXUSSystem {
     this.executor = new LocalTaskExecutor(this.localAI);
     this.verifier = new LocalTaskVerifier(this.localAI);
     this.knowledgeBase = new LocalKnowledgeBase(storage);
+    this.knowledgeGraph = new KnowledgeGraphEngine(storage, this.localAI);
+    this.sourceReputation = new SourceReputationEngine(storage, this.localAI);
   }
 
   async executeGoal(goal: string, context: any = {}, computeBudget: number = 60000): Promise<{
@@ -640,6 +646,45 @@ export class LocalNEXUSSystem {
             const fact = await this.knowledgeBase.storeFact(result, verification, task);
             verifiedFacts.push(fact);
             console.log(`✅ Local fact verified and stored: ${fact.id}`);
+
+            // 7. KNOWLEDGE GRAPH: Add to knowledge graph
+            try {
+              await this.knowledgeGraph.addKnowledgeNode(
+                fact.content,
+                'fact',
+                {
+                  domain: this.inferDomain(fact.content),
+                  tags: this.extractTags(fact.content),
+                  verificationLevel: 'peer-reviewed',
+                  importance: verification.believabilityScore
+                },
+                fact.sources
+              );
+              console.log(`📚 Added to knowledge graph: ${fact.content.substring(0, 50)}...`);
+            } catch (error) {
+              console.warn('Failed to add fact to knowledge graph:', error);
+            }
+
+            // 8. SOURCE REPUTATION: Verify with multiple sources
+            try {
+              if (fact.sources.length > 1) {
+                const consensus = await this.sourceReputation.verifyFactWithSources(
+                  fact.content,
+                  fact.sources,
+                  'ai_analysis'
+                );
+                console.log(`🏆 Multi-source verification: ${consensus.consensusScore.toFixed(2)} consensus (${consensus.majorityPosition})`);
+                
+                // Update fact believability based on source consensus
+                if (consensus.consensusScore > 0.8) {
+                  fact.believabilityScore = Math.min(1, fact.believabilityScore + 0.1);
+                } else if (consensus.consensusScore < 0.2) {
+                  fact.believabilityScore = Math.max(0, fact.believabilityScore - 0.1);
+                }
+              }
+            } catch (error) {
+              console.warn('Failed to verify with source reputation:', error);
+            }
           } else {
             console.log(`❌ Local verification failed for task ${task.id}`);
           }
@@ -741,5 +786,97 @@ export class LocalNEXUSSystem {
       console.error(`Learning task ${taskId} execution failed:`, error);
       return { success: false };
     }
+  }
+
+  // Knowledge Graph methods
+  async getKnowledgeGraph() {
+    return this.knowledgeGraph;
+  }
+
+  async addKnowledge(content: string, type: string, metadata: any = {}, sources: string[] = []) {
+    return await this.knowledgeGraph.addKnowledgeNode(
+      content, 
+      type as any, 
+      metadata, 
+      sources
+    );
+  }
+
+  async getContradictions(severity?: string) {
+    return this.knowledgeGraph.getContradictionsBySeverity(severity as any);
+  }
+
+  async getKnowledgeGraphData() {
+    return this.knowledgeGraph.exportGraphData();
+  }
+
+  async resolveContradiction(contradictionId: string, resolution: string, proposedResolution?: string) {
+    return await this.knowledgeGraph.resolveContradiction(
+      contradictionId, 
+      resolution as any, 
+      proposedResolution
+    );
+  }
+
+  // Helper methods for knowledge processing
+  private inferDomain(content: string): string {
+    const lowerContent = content.toLowerCase();
+    
+    if (lowerContent.includes('science') || lowerContent.includes('research') || lowerContent.includes('experiment')) return 'science';
+    if (lowerContent.includes('technology') || lowerContent.includes('software') || lowerContent.includes('computer')) return 'technology';
+    if (lowerContent.includes('history') || lowerContent.includes('historical') || lowerContent.includes('ancient')) return 'history';
+    if (lowerContent.includes('medical') || lowerContent.includes('health') || lowerContent.includes('disease')) return 'medicine';
+    if (lowerContent.includes('economic') || lowerContent.includes('business') || lowerContent.includes('market')) return 'economics';
+    if (lowerContent.includes('political') || lowerContent.includes('government') || lowerContent.includes('policy')) return 'politics';
+    if (lowerContent.includes('art') || lowerContent.includes('music') || lowerContent.includes('culture')) return 'arts';
+    if (lowerContent.includes('education') || lowerContent.includes('learning') || lowerContent.includes('teaching')) return 'education';
+    
+    return 'general';
+  }
+
+  private extractTags(content: string): string[] {
+    const tags: string[] = [];
+    const words = content.toLowerCase().split(/\s+/);
+    
+    // Extract key terms that might be relevant tags
+    const keyTerms = words.filter(word => 
+      word.length > 4 && 
+      !['that', 'this', 'with', 'from', 'they', 'have', 'been', 'will', 'would', 'could', 'should'].includes(word)
+    );
+    
+    // Add up to 5 most relevant terms as tags
+    tags.push(...keyTerms.slice(0, 5));
+    
+    return tags;
+  }
+
+  // Daily diff integration
+  async generateDailyKnowledgeDiff(date?: string) {
+    try {
+      const { DailyKnowledgeDiffEngine } = await import('./daily-knowledge-diff');
+      const diffEngine = new DailyKnowledgeDiffEngine(this.storage, this.knowledgeGraph, this.localAI);
+      
+      return await diffEngine.generateDailyDiff(date);
+    } catch (error) {
+      console.error('Failed to generate daily knowledge diff:', error);
+      return null;
+    }
+  }
+
+  // Source reputation methods
+  async getSourceReputation() {
+    return this.sourceReputation;
+  }
+
+  async verifyFactWithSources(factContent: string, sources: string[]) {
+    return await this.sourceReputation.verifyFactWithSources(factContent, sources);
+  }
+
+  async getTopSources(limit?: number, domain?: string) {
+    return this.sourceReputation.getTopSources(limit, domain);
+  }
+
+  async getReputationMetrics() {
+    return this.sourceReputation.getReputationMetrics();
   }
 }

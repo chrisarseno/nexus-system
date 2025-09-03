@@ -4,7 +4,7 @@ import ConsciousnessMetrics from "@/components/consciousness-metrics";
 import ModuleGrid from "@/components/module-grid";
 import ActivityFeed from "@/components/activity-feed";
 import SafetyMonitor from "@/components/safety-monitor";
-import KnowledgeGraph from "@/components/knowledge-graph";
+import KnowledgeGraphVisualization from "@/components/knowledge-graph-viz";
 import AICollaboration from "@/components/ai-collaboration";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -215,7 +215,7 @@ export default function Dashboard() {
           </div>
           
           {/* Knowledge Graph Preview */}
-          <KnowledgeGraph />
+          <KnowledgeGraphVisualization />
         </div>
       </main>
     </div>

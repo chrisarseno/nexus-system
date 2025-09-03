@@ -224,6 +224,77 @@ export function createRoutes(storage: IStorage, localNexusSystem?: any) {
         });
       }
     });
+
+    // Knowledge Graph endpoints
+    router.get("/api/nexus/knowledge-graph", async (req: Request, res: Response) => {
+      try {
+        const graphData = await localNexusSystem.getKnowledgeGraphData();
+        res.json(graphData);
+      } catch (error) {
+        res.status(500).json({ 
+          error: "Failed to get knowledge graph", 
+          details: error instanceof Error ? error.message : "Unknown error" 
+        });
+      }
+    });
+
+    router.post("/api/nexus/knowledge", async (req: Request, res: Response) => {
+      try {
+        const { content, type, metadata, sources } = req.body;
+        const node = await localNexusSystem.addKnowledge(content, type, metadata, sources);
+        res.json({ success: true, node });
+      } catch (error) {
+        res.status(500).json({ 
+          error: "Failed to add knowledge", 
+          details: error instanceof Error ? error.message : "Unknown error" 
+        });
+      }
+    });
+
+    router.get("/api/nexus/contradictions", async (req: Request, res: Response) => {
+      try {
+        const { severity } = req.query;
+        const contradictions = await localNexusSystem.getContradictions(severity as string);
+        res.json(contradictions);
+      } catch (error) {
+        res.status(500).json({ 
+          error: "Failed to get contradictions", 
+          details: error instanceof Error ? error.message : "Unknown error" 
+        });
+      }
+    });
+
+    router.post("/api/nexus/contradictions/:contradictionId/resolve", async (req: Request, res: Response) => {
+      try {
+        const { contradictionId } = req.params;
+        const { resolution, proposedResolution } = req.body;
+        const success = await localNexusSystem.resolveContradiction(
+          contradictionId, 
+          resolution, 
+          proposedResolution
+        );
+        res.json({ success });
+      } catch (error) {
+        res.status(500).json({ 
+          error: "Failed to resolve contradiction", 
+          details: error instanceof Error ? error.message : "Unknown error" 
+        });
+      }
+    });
+
+    // Daily Knowledge Diff endpoint
+    router.get("/api/nexus/knowledge-diff", async (req: Request, res: Response) => {
+      try {
+        const { date } = req.query;
+        const diff = await localNexusSystem.generateDailyKnowledgeDiff(date as string);
+        res.json(diff);
+      } catch (error) {
+        res.status(500).json({ 
+          error: "Failed to generate knowledge diff", 
+          details: error instanceof Error ? error.message : "Unknown error" 
+        });
+      }
+    });
   }
 
   return router;
