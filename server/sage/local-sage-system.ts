@@ -386,6 +386,196 @@ export class LocalKnowledgeBase {
       fact.content.toLowerCase().includes(query.toLowerCase())
     ).sort((a, b) => b.believabilityScore - a.believabilityScore);
   }
+
+  // Methods for curriculum engine support
+  async getLowConfidenceAreas(): Promise<Array<{
+    domain: string;
+    topic: string;
+    description: string;
+    confidence: number;
+    importance: number;
+    complexity?: number;
+    prerequisites?: string[];
+    sources?: string[];
+  }>> {
+    const factsByDomain = new Map<string, LocalKnowledgeFact[]>();
+    
+    // Group facts by extracting domain from content
+    for (const fact of this.facts.values()) {
+      const domain = this.extractDomain(fact.content);
+      if (!factsByDomain.has(domain)) {
+        factsByDomain.set(domain, []);
+      }
+      factsByDomain.get(domain)!.push(fact);
+    }
+    
+    const lowConfidenceAreas = [];
+    
+    for (const [domain, domainFacts] of factsByDomain) {
+      const avgConfidence = domainFacts.reduce((sum, f) => sum + f.believabilityScore, 0) / domainFacts.length;
+      
+      if (avgConfidence < 0.7 || domainFacts.length < 3) {
+        lowConfidenceAreas.push({
+          domain,
+          topic: domain,
+          description: `Insufficient or low-confidence knowledge in ${domain}`,
+          confidence: avgConfidence,
+          importance: this.calculateDomainImportance(domain, domainFacts),
+          complexity: this.estimateComplexity(domainFacts),
+          prerequisites: this.identifyPrerequisites(domain),
+          sources: [...new Set(domainFacts.flatMap(f => f.sources))]
+        });
+      }
+    }
+    
+    return lowConfidenceAreas.sort((a, b) => (b.importance * (1 - b.confidence)) - (a.importance * (1 - a.confidence)));
+  }
+
+  async findContradictions(): Promise<Array<{
+    domain: string;
+    description: string;
+    conflictingSources: string[];
+    facts: LocalKnowledgeFact[];
+  }>> {
+    const contradictions = [];
+    const factsByDomain = new Map<string, LocalKnowledgeFact[]>();
+    
+    // Group by domain
+    for (const fact of this.facts.values()) {
+      const domain = this.extractDomain(fact.content);
+      if (!factsByDomain.has(domain)) {
+        factsByDomain.set(domain, []);
+      }
+      factsByDomain.get(domain)!.push(fact);
+    }
+    
+    // Simple contradiction detection
+    const opposingPairs = [
+      ['increase', 'decrease'],
+      ['true', 'false'],
+      ['positive', 'negative'],
+      ['beneficial', 'harmful'],
+      ['effective', 'ineffective']
+    ];
+    
+    for (const [domain, domainFacts] of factsByDomain) {
+      for (const [term1, term2] of opposingPairs) {
+        const facts1 = domainFacts.filter(f => f.content.toLowerCase().includes(term1));
+        const facts2 = domainFacts.filter(f => f.content.toLowerCase().includes(term2));
+        
+        if (facts1.length > 0 && facts2.length > 0) {
+          const allConflictingFacts = [...facts1, ...facts2];
+          contradictions.push({
+            domain,
+            description: `Potential contradiction between statements containing "${term1}" and "${term2}"`,
+            conflictingSources: [...new Set(allConflictingFacts.flatMap(f => f.sources))],
+            facts: allConflictingFacts
+          });
+        }
+      }
+    }
+    
+    return contradictions;
+  }
+
+  async findMissingConnections(): Promise<Array<{
+    domain1: string;
+    domain2: string;
+    suggestedConnection: string;
+    importance: number;
+  }>> {
+    const domains = [...new Set(Array.from(this.facts.values()).map(f => this.extractDomain(f.content)))];
+    const connections = [];
+    
+    const relatedDomains = [
+      ['machine_learning', 'statistics'],
+      ['programming', 'computer_science'],
+      ['physics', 'mathematics'],
+      ['biology', 'chemistry'],
+      ['economics', 'psychology']
+    ];
+    
+    for (const [domain1, domain2] of relatedDomains) {
+      if (domains.includes(domain1) && domains.includes(domain2)) {
+        const facts1 = Array.from(this.facts.values()).filter(f => this.extractDomain(f.content) === domain1);
+        const facts2 = Array.from(this.facts.values()).filter(f => this.extractDomain(f.content) === domain2);
+        
+        const hasConnection = facts1.some(f1 => 
+          facts2.some(f2 => 
+            f1.content.toLowerCase().includes(domain2) || 
+            f2.content.toLowerCase().includes(domain1)
+          )
+        );
+        
+        if (!hasConnection) {
+          connections.push({
+            domain1,
+            domain2,
+            suggestedConnection: `Explore connections between ${domain1} and ${domain2}`,
+            importance: 0.8
+          });
+        }
+      }
+    }
+    
+    return connections;
+  }
+
+  // Helper methods
+  private extractDomain(content: string): string {
+    const keywords = content.toLowerCase();
+    
+    if (keywords.includes('machine learning') || keywords.includes('neural network')) return 'machine_learning';
+    if (keywords.includes('programming') || keywords.includes('code') || keywords.includes('algorithm')) return 'programming';
+    if (keywords.includes('mathematics') || keywords.includes('equation') || keywords.includes('calculation')) return 'mathematics';
+    if (keywords.includes('physics') || keywords.includes('quantum') || keywords.includes('energy')) return 'physics';
+    if (keywords.includes('statistics') || keywords.includes('probability') || keywords.includes('data analysis')) return 'statistics';
+    if (keywords.includes('biology') || keywords.includes('organism') || keywords.includes('cell')) return 'biology';
+    if (keywords.includes('chemistry') || keywords.includes('molecule') || keywords.includes('reaction')) return 'chemistry';
+    if (keywords.includes('economics') || keywords.includes('market') || keywords.includes('financial')) return 'economics';
+    if (keywords.includes('psychology') || keywords.includes('behavior') || keywords.includes('cognitive')) return 'psychology';
+    
+    return 'general';
+  }
+
+  private calculateDomainImportance(domain: string, facts: LocalKnowledgeFact[]): number {
+    const factCount = facts.length;
+    const avgConfidence = facts.reduce((sum, f) => sum + f.believabilityScore, 0) / factCount;
+    
+    const recentFacts = facts.filter(f => 
+      Date.now() - f.lastVerified.getTime() < 7 * 24 * 60 * 60 * 1000
+    ).length;
+    
+    const importance = Math.min(1.0, (factCount * 0.1) + (avgConfidence * 0.3) + (recentFacts * 0.2));
+    return importance;
+  }
+
+  private estimateComplexity(facts: LocalKnowledgeFact[]): number {
+    const avgLength = facts.reduce((sum, f) => sum + f.content.length, 0) / facts.length;
+    const technicalTerms = ['algorithm', 'function', 'parameter', 'optimization', 'analysis'];
+    const technicalDensity = facts.reduce((sum, f) => {
+      const termCount = technicalTerms.filter(term => 
+        f.content.toLowerCase().includes(term)
+      ).length;
+      return sum + termCount;
+    }, 0) / facts.length;
+    
+    return Math.min(3.0, 1.0 + (avgLength / 200) + (technicalDensity * 0.5));
+  }
+
+  private identifyPrerequisites(domain: string): string[] {
+    const prerequisiteMap: Record<string, string[]> = {
+      'machine_learning': ['statistics', 'programming', 'mathematics'],
+      'deep_learning': ['machine_learning', 'linear_algebra'],
+      'computer_vision': ['machine_learning', 'image_processing'],
+      'natural_language_processing': ['machine_learning', 'linguistics'],
+      'quantum_computing': ['quantum_physics', 'linear_algebra', 'computer_science'],
+      'blockchain': ['cryptography', 'distributed_systems'],
+      'cybersecurity': ['networking', 'cryptography', 'system_administration']
+    };
+    
+    return prerequisiteMap[domain] || [];
+  }
 }
 
 /**
@@ -506,5 +696,50 @@ export class LocalSAGESystem {
 
   getHourlyCostRate(): number {
     return this.localAI.getHourlyCostRate();
+  }
+
+  // Curriculum engine integration
+  async initiateLearningCycle(): Promise<{
+    gaps: any[];
+    tasks: any[];
+    metrics: any;
+  }> {
+    try {
+      const { CurriculumEngine } = await import('./curriculum-engine');
+      const curriculum = new CurriculumEngine(this.knowledgeBase, this.localAI);
+      
+      // Identify learning gaps
+      const gaps = await curriculum.identifyLearningGaps();
+      console.log(`📚 Identified ${gaps.length} learning gaps`);
+      
+      // Generate learning tasks for top priority gaps
+      const priorityGaps = gaps.slice(0, 3);
+      const tasks = await curriculum.generateLearningTasks(priorityGaps);
+      console.log(`📋 Generated ${tasks.length} learning tasks`);
+      
+      // Get curriculum metrics
+      const metrics = curriculum.getMetrics();
+      
+      return { gaps, tasks, metrics };
+    } catch (error) {
+      console.error('Learning cycle initiation failed:', error);
+      return { gaps: [], tasks: [], metrics: {} };
+    }
+  }
+
+  async executeLearningTask(taskId: string): Promise<{
+    success: boolean;
+    result?: any;
+    newKnowledge?: any[];
+  }> {
+    try {
+      const { CurriculumEngine } = await import('./curriculum-engine');
+      const curriculum = new CurriculumEngine(this.knowledgeBase, this.localAI);
+      
+      return await curriculum.executeLearningTask(taskId);
+    } catch (error) {
+      console.error(`Learning task ${taskId} execution failed:`, error);
+      return { success: false };
+    }
   }
 }

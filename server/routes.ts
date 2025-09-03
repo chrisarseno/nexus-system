@@ -195,6 +195,35 @@ export function createRoutes(storage: IStorage, localSageSystem?: any) {
         res.status(500).json({ error: "Failed to get knowledge base" });
       }
     });
+
+    router.post("/api/sage/learn", async (req: Request, res: Response) => {
+      try {
+        const learningCycle = await localSageSystem.initiateLearningCycle();
+        res.json({
+          success: true,
+          ...learningCycle,
+          message: `Initiated learning cycle: ${learningCycle.gaps.length} gaps identified, ${learningCycle.tasks.length} tasks generated`
+        });
+      } catch (error) {
+        res.status(500).json({ 
+          error: "Failed to initiate learning cycle",
+          details: error instanceof Error ? error.message : "Unknown error"
+        });
+      }
+    });
+
+    router.post("/api/sage/learn/task/:taskId", async (req: Request, res: Response) => {
+      try {
+        const { taskId } = req.params;
+        const result = await localSageSystem.executeLearningTask(taskId);
+        res.json(result);
+      } catch (error) {
+        res.status(500).json({
+          error: "Failed to execute learning task",
+          details: error instanceof Error ? error.message : "Unknown error"
+        });
+      }
+    });
   }
 
   return router;
