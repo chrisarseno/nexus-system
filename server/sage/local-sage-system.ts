@@ -7,6 +7,7 @@ import { LocalAIService } from './local-ai-service';
 import { KnowledgeGraphEngine } from './knowledge-graph';
 import { SourceReputationEngine } from './source-reputation';
 import { SelfLearningAgent } from './self-learning-agent';
+import { ConsciousnessBackupEngine } from './consciousness-backup';
 import { IStorage } from '../storage';
 
 export interface LocalTask {
@@ -594,6 +595,7 @@ export class LocalNEXUSSystem {
   private knowledgeGraph: KnowledgeGraphEngine;
   private sourceReputation: SourceReputationEngine;
   private selfLearningAgent: SelfLearningAgent;
+  private consciousnessBackup: ConsciousnessBackupEngine;
   private storage: IStorage;
 
   constructor(storage: IStorage) {
@@ -607,6 +609,12 @@ export class LocalNEXUSSystem {
     this.knowledgeGraph = new KnowledgeGraphEngine(storage, this.localAI);
     this.sourceReputation = new SourceReputationEngine(storage, this.localAI);
     this.selfLearningAgent = new SelfLearningAgent(storage, this.localAI, this.knowledgeGraph);
+    this.consciousnessBackup = new ConsciousnessBackupEngine(
+      storage, 
+      this.localAI, 
+      this.knowledgeGraph, 
+      this.selfLearningAgent
+    );
   }
 
   async executeGoal(goal: string, context: any = {}, computeBudget: number = 60000): Promise<{
@@ -978,6 +986,27 @@ export class LocalNEXUSSystem {
       learningExperiences,
       performanceImprovement
     };
+  }
+
+  // Consciousness backup and transfer methods
+  async createConsciousnessSnapshot(description?: string) {
+    return await this.consciousnessBackup.createSnapshot(description);
+  }
+
+  async restoreFromSnapshot(snapshotId: string) {
+    return await this.consciousnessBackup.restoreFromSnapshot(snapshotId);
+  }
+
+  async transferConsciousness(targetSystem: any, protocol: any) {
+    return await this.consciousnessBackup.transferConsciousness(targetSystem, protocol);
+  }
+
+  async getBackupStats() {
+    return this.consciousnessBackup.getBackupStats();
+  }
+
+  async listSnapshots() {
+    return this.consciousnessBackup.listSnapshots();
   }
 
   // Helper method to infer domain from content

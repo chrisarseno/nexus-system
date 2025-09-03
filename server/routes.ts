@@ -360,6 +360,70 @@ export function createRoutes(storage: IStorage, localNexusSystem?: any) {
         });
       }
     });
+
+    // Consciousness backup and transfer endpoints
+    router.post("/api/nexus/consciousness/snapshot", async (req: Request, res: Response) => {
+      try {
+        const { description } = req.body;
+        const snapshot = await localNexusSystem.createConsciousnessSnapshot(description);
+        res.json(snapshot);
+      } catch (error) {
+        res.status(500).json({
+          error: "Failed to create consciousness snapshot",
+          details: error instanceof Error ? error.message : "Unknown error"
+        });
+      }
+    });
+
+    router.post("/api/nexus/consciousness/restore", async (req: Request, res: Response) => {
+      try {
+        const { snapshotId } = req.body;
+        const result = await localNexusSystem.restoreFromSnapshot(snapshotId);
+        res.json(result);
+      } catch (error) {
+        res.status(500).json({
+          error: "Failed to restore consciousness",
+          details: error instanceof Error ? error.message : "Unknown error"
+        });
+      }
+    });
+
+    router.get("/api/nexus/consciousness/snapshots", async (req: Request, res: Response) => {
+      try {
+        const snapshots = await localNexusSystem.listSnapshots();
+        res.json(snapshots);
+      } catch (error) {
+        res.status(500).json({
+          error: "Failed to list snapshots",
+          details: error instanceof Error ? error.message : "Unknown error"
+        });
+      }
+    });
+
+    router.get("/api/nexus/consciousness/backup-stats", async (req: Request, res: Response) => {
+      try {
+        const stats = await localNexusSystem.getBackupStats();
+        res.json(stats);
+      } catch (error) {
+        res.status(500).json({
+          error: "Failed to get backup stats",
+          details: error instanceof Error ? error.message : "Unknown error"
+        });
+      }
+    });
+
+    router.post("/api/nexus/consciousness/transfer", async (req: Request, res: Response) => {
+      try {
+        const { targetSystem, protocol } = req.body;
+        const result = await localNexusSystem.transferConsciousness(targetSystem, protocol);
+        res.json(result);
+      } catch (error) {
+        res.status(500).json({
+          error: "Failed to transfer consciousness",
+          details: error instanceof Error ? error.message : "Unknown error"
+        });
+      }
+    });
   }
 
   return router;
